@@ -216,14 +216,14 @@
             min-height: 22px;
         }
 
-        .link-container a {
+        .link-container a, .topic-content a, .useful-link-item a {
             color: var(--brand-purple-mid);
             font-weight: 600;
             text-decoration: none;
             border-bottom: 1px dotted var(--brand-purple-mid);
         }
 
-        .link-container a:hover {
+        .link-container a:hover, .topic-content a:hover, .useful-link-item a:hover {
             color: var(--brand-red);
             border-bottom-color: var(--brand-red);
         }
@@ -566,7 +566,7 @@
             display: none;
         }
 
-        .topic-item {
+        .topic-item, .useful-link-item {
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -581,7 +581,7 @@
             color: var(--brand-dark);
         }
 
-        .topic-item:hover {
+        .topic-item:hover, .useful-link-item:hover {
             background: rgba(255, 255, 255, 0.95);
         }
 
@@ -663,6 +663,35 @@
             font-size: 0.88rem;
             color: var(--brand-dark);
             outline: none;
+        }
+
+        .add-link-box {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 14px;
+        }
+
+        .add-link-row {
+            display: flex;
+            gap: 6px;
+        }
+
+        .add-link-box input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-family: 'Century Gothic', sans-serif;
+            background: var(--input-bg);
+            font-size: 0.85rem;
+            color: var(--brand-dark);
+            outline: none;
+        }
+
+        .add-link-box input:focus {
+            background: #FFFFFF;
+            border-color: var(--brand-red);
         }
 
         .placement-item {
@@ -801,7 +830,7 @@
                 </div>
                 <div class="clean-field full-width">
                     <label>Call link:</label>
-                    <div id="field-link" class="link-container" contenteditable="true" data-placeholder="Paste or type meeting link here..."></div>
+                    <div id="field-link" class="link-container" contenteditable="true" data-placeholder="Paste or type meeting link here..."><span style="color: #999; font-style: italic;">Paste or type meeting link here...</span></div>
                 </div>
             </div>
 
@@ -825,8 +854,11 @@
         </div>
 
         <div class="sidebar-area">
-            <aside class="side-card post-it">
-                <h3 class="side-card-header">Suggested Topics</h3>
+            <aside class="side-card post-it" id="suggestedTopicsCard">
+                <h3 class="side-card-header clickable" onclick="toggleSuggestedTopics()">
+                    <span>Suggested Topics</span>
+                    <span class="toggle-arrow">⌄</span>
+                </h3>
                 <div class="side-card-body">
                     <div id="topics-list" style="margin-top: 12px;"></div>
 
@@ -839,8 +871,26 @@
                     </div>
 
                     <div class="add-topic-box">
-                        <input type="text" id="new-topic-input" placeholder="New topic...">
+                        <input type="text" id="new-topic-input" placeholder="New topic or link...">
                         <button class="btn" onclick="addTopic()" style="padding: 8px 14px; background-color: var(--brand-purple-dark);">+</button>
+                    </div>
+                </div>
+            </aside>
+
+            <aside class="side-card" id="usefulLinksCard">
+                <h3 class="side-card-header clickable" onclick="toggleUsefulLinks()">
+                    <span>Useful Links</span>
+                    <span class="toggle-arrow">⌄</span>
+                </h3>
+                <div class="side-card-body">
+                    <div id="useful-links-list" style="margin-top: 12px;"></div>
+
+                    <div class="add-link-box">
+                        <input type="text" id="new-link-name-input" placeholder="Link name (e.g. Phonics Table)">
+                        <div class="add-link-row">
+                            <input type="text" id="new-link-url-input" placeholder="Paste URL here...">
+                            <button class="btn" onclick="addUsefulLink()" style="padding: 8px 14px; background-color: var(--brand-purple-dark);">+</button>
+                        </div>
                     </div>
                 </div>
             </aside>
@@ -920,6 +970,16 @@
         function toggleSessionAccordion(header) {
             const card = header.parentElement;
             card.classList.toggle('open');
+        }
+
+        function toggleSuggestedTopics() {
+            const card = document.getElementById('suggestedTopicsCard');
+            card.classList.toggle('collapsed');
+        }
+
+        function toggleUsefulLinks() {
+            const card = document.getElementById('usefulLinksCard');
+            card.classList.toggle('collapsed');
         }
 
         function togglePlacementChat() {
@@ -1020,7 +1080,8 @@
 
                     plans: getPlansData(),
                     sessionMonths: getSessionMonthsData(),
-                    topics: getTopicsData()
+                    topics: getTopicsData(),
+                    usefulLinks: getUsefulLinksData()
                 };
 
                 docRef.set(data, { merge: true }).then(() => {
@@ -1055,7 +1116,7 @@
             headerWrapper.innerHTML = '';
             containerWrapper.innerHTML = '';
 
-            if (plans.length === 0) {
+            if (!plans || plans.length === 0) {
                 plans = [{ title: 'Cycle 1 (Weeks 1-4)', now: '', work: '', after: '', next: '' }];
             }
 
@@ -1195,7 +1256,7 @@
             headerWrapper.innerHTML = '';
             containerWrapper.innerHTML = '';
 
-            if (months.length === 0) {
+            if (!months || months.length === 0) {
                 months = [{ title: 'Month 1', cards: [{date: '', topic: '', objectives: '', covered: '', grammar: '', vocab: '', pronunciation: '', observations: '', nextSession: '', studentNotes: '', isOpen: true}] }];
             }
 
@@ -1436,11 +1497,22 @@
             const topics = [];
             document.querySelectorAll('.topic-item').forEach(item => {
                 topics.push({
-                    text: item.querySelector('span').innerText || '',
+                    text: item.getAttribute('data-raw-text') || item.querySelector('span').innerText || '',
                     completed: item.querySelector('input').checked || false
                 });
             });
             return topics;
+        }
+
+        function formatTopicTextHtml(text) {
+            const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9][-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/g;
+            return text.replace(urlRegex, (url) => {
+                let href = url;
+                if (!href.startsWith('http://') && !href.startsWith('https://')) {
+                    href = 'https://' + href;
+                }
+                return `<a href="${href}" target="_blank">${url}</a>`;
+            });
         }
 
         function renderTopics(topics = []) {
@@ -1452,24 +1524,30 @@
 
             let completedCount = 0;
 
-            topics.forEach((t) => {
-                const div = document.createElement('div');
-                div.className = `topic-item ${t.completed ? 'completed' : ''}`;
-                div.innerHTML = `
-                    <div class="topic-content">
-                        <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTopic(this)">
-                        <span>${t.text}</span>
-                    </div>
-                    <button class="delete-topic-btn" onclick="deleteTopic(this)" title="Delete topic">×</button>
-                `;
+            if (topics && topics.length > 0) {
+                topics.forEach((t) => {
+                    const div = document.createElement('div');
+                    div.className = `topic-item ${t.completed ? 'completed' : ''}`;
+                    div.setAttribute('data-raw-text', t.text);
 
-                if (t.completed) {
-                    completedList.appendChild(div);
-                    completedCount++;
-                } else {
-                    activeList.appendChild(div);
-                }
-            });
+                    const formattedTextHtml = formatTopicTextHtml(t.text);
+
+                    div.innerHTML = `
+                        <div class="topic-content">
+                            <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTopic(this)">
+                            <span>${formattedTextHtml}</span>
+                        </div>
+                        <button class="delete-topic-btn" onclick="deleteTopic(this)" title="Delete topic">×</button>
+                    `;
+
+                    if (t.completed) {
+                        completedList.appendChild(div);
+                        completedCount++;
+                    } else {
+                        activeList.appendChild(div);
+                    }
+                });
+            }
 
             document.getElementById('completed-count').innerText = completedCount;
 
@@ -1480,7 +1558,8 @@
 
         function addTopic() {
             const input = document.getElementById('new-topic-input');
-            if (!input.value.trim()) return;
+            const val = input.value.trim();
+            if (!val) return;
             
             const activeList = document.getElementById('topics-list');
             if (activeList.querySelector('.empty-msg')) {
@@ -1489,10 +1568,14 @@
 
             const div = document.createElement('div');
             div.className = 'topic-item';
+            div.setAttribute('data-raw-text', val);
+
+            const formattedTextHtml = formatTopicTextHtml(val);
+
             div.innerHTML = `
                 <div class="topic-content">
                     <input type="checkbox" onchange="toggleTopic(this)">
-                    <span>${input.value}</span>
+                    <span>${formattedTextHtml}</span>
                 </div>
                 <button class="delete-topic-btn" onclick="deleteTopic(this)" title="Delete topic">×</button>
             `;
@@ -1507,6 +1590,99 @@
 
         function deleteTopic(btn) {
             btn.closest('.topic-item').remove();
+            saveData();
+        }
+
+        function getUsefulLinksData() {
+            const links = [];
+            document.querySelectorAll('.useful-link-item').forEach(item => {
+                links.push({
+                    name: item.getAttribute('data-link-name') || '',
+                    url: item.getAttribute('data-link-url') || ''
+                });
+            });
+            return links;
+        }
+
+        function formatHref(url) {
+            const trimmed = (url || '').trim();
+            if (!trimmed) return '#';
+            if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+                return 'https://' + trimmed;
+            }
+            return trimmed;
+        }
+
+        function renderUsefulLinks(links = []) {
+            const list = document.getElementById('useful-links-list');
+            list.innerHTML = '';
+
+            if (links && links.length > 0) {
+                links.forEach((l) => {
+                    const name = l.name || l.url || '';
+                    const url = l.url || '';
+                    const href = formatHref(url);
+
+                    const div = document.createElement('div');
+                    div.className = 'useful-link-item';
+                    div.setAttribute('data-link-name', name);
+                    div.setAttribute('data-link-url', url);
+
+                    div.innerHTML = `
+                        <div class="topic-content">
+                            <a href="${href}" target="_blank" rel="noopener noreferrer">${name}</a>
+                        </div>
+                        <button class="delete-topic-btn" onclick="deleteUsefulLink(this)" title="Delete link">×</button>
+                    `;
+                    list.appendChild(div);
+                });
+            }
+
+            if (list.children.length === 0) {
+                list.innerHTML = `<div class="empty-msg">No useful links yet. Add one below!</div>`;
+            }
+        }
+
+        function addUsefulLink() {
+            const nameInput = document.getElementById('new-link-name-input');
+            const urlInput = document.getElementById('new-link-url-input');
+            const nameVal = nameInput.value.trim();
+            const urlVal = urlInput.value.trim();
+
+            if (!urlVal) return;
+
+            const displayName = nameVal || urlVal;
+            const href = formatHref(urlVal);
+
+            const list = document.getElementById('useful-links-list');
+            if (list.querySelector('.empty-msg')) {
+                list.innerHTML = '';
+            }
+
+            const div = document.createElement('div');
+            div.className = 'useful-link-item';
+            div.setAttribute('data-link-name', displayName);
+            div.setAttribute('data-link-url', urlVal);
+
+            div.innerHTML = `
+                <div class="topic-content">
+                    <a href="${href}" target="_blank" rel="noopener noreferrer">${displayName}</a>
+                </div>
+                <button class="delete-topic-btn" onclick="deleteUsefulLink(this)" title="Delete link">×</button>
+            `;
+            list.appendChild(div);
+
+            nameInput.value = '';
+            urlInput.value = '';
+            saveData();
+        }
+
+        function deleteUsefulLink(btn) {
+            btn.closest('.useful-link-item').remove();
+            const list = document.getElementById('useful-links-list');
+            if (list.children.length === 0) {
+                list.innerHTML = `<div class="empty-msg">No useful links yet. Add one below!</div>`;
+            }
             saveData();
         }
 
@@ -1540,16 +1716,20 @@
                 if (activeEl !== document.getElementById('chat-works')) document.getElementById('chat-works').innerHTML = data.chatWorks || '';
                 if (activeEl !== document.getElementById('chat-observations')) document.getElementById('chat-observations').innerHTML = data.chatObservations || '';
 
-                if (!activeEl.closest('#planTabsContainer')) {
+                if (!activeEl || !activeEl.closest('#planTabsContainer')) {
                     renderPlans(data.plans || []);
                 }
 
-                if (!activeEl.closest('#sessionTabsContainer')) {
+                if (!activeEl || !activeEl.closest('#sessionTabsContainer')) {
                     renderSessionMonths(data.sessionMonths || []);
                 }
                 
-                if (data.topics && !document.activeElement.closest('.post-it')) {
-                    renderTopics(data.topics);
+                if (!activeEl || !activeEl.closest('.post-it')) {
+                    renderTopics(data.topics || []);
+                }
+
+                if (!activeEl || !activeEl.closest('#usefulLinksCard')) {
+                    renderUsefulLinks(data.usefulLinks || []);
                 }
                 
                 document.getElementById('sync-status').innerText = "All changes saved";
@@ -1557,6 +1737,7 @@
                 renderPlans([]);
                 renderSessionMonths([]);
                 renderTopics([]);
+                renderUsefulLinks([]);
             }
         }, (error) => {
             console.error("Firebase Snapshot Error:", error);
